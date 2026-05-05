@@ -1,0 +1,20 @@
+{
+  "name": "agent-from-scratch",
+  "version": "1.0.0",
+  "description": "Agent from scratch",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Miguel Garcia",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^6.36.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}
