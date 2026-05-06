@@ -1,3 +1,7 @@
+/**
+ * Type definitions for the different kinds of messages.
+ */
+
 type MessageType = "ai" | "human" | "system";
 
 abstract class BaseMessage<TMsgType extends MessageType> {
