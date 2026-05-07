@@ -11,7 +11,6 @@ class Agent {
   prompt: Array<SystemMessage>
   tools: Array<AnyTool>
   #toolsByName: Map<string, AnyTool>
-  #pendingInterrupts: Map<string, Interrupt>;
 
   constructor(params: { tools: Array<AnyTool> }) {
     this.messageHistory = [];
@@ -21,7 +20,6 @@ class Agent {
     this.chatModel = new ChatModel();
     this.chatModel.bindTools(this.tools);
     this.prompt = [new SystemMessage("You are an expert in software development.")];
-    this.#pendingInterrupts = new Map();
   }
 
   /**
@@ -49,11 +47,7 @@ class Agent {
           throw new Error(`Tool not found ${toolCall.toolName}`);
         }
         try {
-          // We could implement tool confirmation yielding a new type Interrupt
-          // and then awaiting a deferred promise that the controller can resolve
-          // using agent.answerInterrupt(value, interruptId?)
-          const interruptionId = "1"; // we may support parallel in the future
-          const interrupt = new Interrupt(interruptionId, `Allow tool ${tool.name} with args: ${JSON.stringify(args)}`);
+          const interrupt = new Interrupt(`Allow tool ${tool.name} with args: ${JSON.stringify(args)}`);
           yield interrupt;
           const answer = await interrupt.await();
           let toolMsg: ToolMessage;
