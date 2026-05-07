@@ -34,9 +34,15 @@ async function main() {
       process.exit(0);
     }
     for await (const resp of agent.invoke(new HumanMessage(input))) {
+      // TODO: we should at least try to render markdown
       console.log(resp.content);
       if (resp.type == "ai") {
         console.log(resp.toolCalls);
+      }
+      if (resp.type == "interrupt") {
+        rl.question("answer > ", (ans) => {
+          resp.answer(ans.trim());
+        });
       }
     }
     rl.prompt();

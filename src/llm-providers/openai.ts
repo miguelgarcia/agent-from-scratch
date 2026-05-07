@@ -12,20 +12,21 @@ const formatMessage = (msg: AnyMessage): OpenAI.Chat.Completions.ChatCompletionM
     case "human":
       return { role: "user", content: msg.content };
     case "ai":
-      return {
+      const ret: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam = {
         role: "assistant",
         content: msg.content || "",
-        tool_calls: (msg.toolCalls && msg.toolCalls.length > 0)
-          ? (msg.toolCalls.map(tc => ({
-            id: tc.id,
-            type: "function",
-            function: {
-              arguments: JSON.stringify(tc.arguments),
-              name: tc.toolName
-            }
-          })))
-          : []
       };
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        (ret as any).tool_calls = msg.toolCalls.map(tc => ({
+          id: tc.id,
+          type: "function",
+          function: {
+            arguments: JSON.stringify(tc.arguments),
+            name: tc.toolName
+          }
+        }));
+      }
+      return ret;
     case "system":
       return { role: "system", content: msg.content };
     case "tool":

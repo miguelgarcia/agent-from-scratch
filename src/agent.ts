@@ -1,8 +1,9 @@
 import { HumanMessage, AIMessage, SystemMessage, AnyMessage, ToolMessage } from "./messages";
 import { ChatModel } from "./llm-providers/openai"
 import { AnyTool } from "./tool";
+import { Interrupt } from "./interrupt";
 
-type AgentOutput = AnyMessage;
+type AgentOutput = AnyMessage | Interrupt;
 
 class Agent {
   messageHistory: Array<AnyMessage>
@@ -10,6 +11,7 @@ class Agent {
   prompt: Array<SystemMessage>
   tools: Array<AnyTool>
   #toolsByName: Map<string, AnyTool>
+  #pendingInterrupts: Map<string, Interrupt>;
 
   constructor(params: { tools: Array<AnyTool> }) {
     this.messageHistory = [];
@@ -19,6 +21,7 @@ class Agent {
     this.chatModel = new ChatModel();
     this.chatModel.bindTools(this.tools);
     this.prompt = [new SystemMessage("You are an expert in software development.")];
+    this.#pendingInterrupts = new Map();
   }
 
   /**
@@ -46,8 +49,20 @@ class Agent {
           throw new Error(`Tool not found ${toolCall.toolName}`);
         }
         try {
-          const toolResult = await tool.invoke(args);
-          const toolMsg = new ToolMessage(JSON.stringify(toolResult), toolCall.id);
+          // We could implement tool confirmation yielding a new type Interrupt
+          // and then awaiting a deferred promise that the controller can resolve
+          // using agent.answerInterrupt(value, interruptId?)
+          const interruptionId = "1"; // we may support parallel in the future
+          const interrupt = new Interrupt(interruptionId, `Allow tool ${tool.name} with args: ${JSON.stringify(args)}`);
+          yield interrupt;
+          const answer = await interrupt.await();
+          let toolMsg: ToolMessage;
+          if (answer == "y") {
+            const toolResult = await tool.invoke(args);
+            toolMsg = new ToolMessage(JSON.stringify(toolResult), toolCall.id);
+          } else {
+            toolMsg = new ToolMessage("blocked by user", toolCall.id);
+          }
           yield toolMsg;
           this.messageHistory.push(toolMsg);
         } catch (e) {
@@ -55,6 +70,10 @@ class Agent {
         }
       }
     }
+  }
+
+  async awaitInterrupt(interruptId: string) {
+
   }
 }
 
