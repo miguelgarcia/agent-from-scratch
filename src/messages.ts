@@ -2,17 +2,19 @@
  * Type definitions for the different kinds of messages.
  */
 
-import { NullLiteral } from "typescript";
-
-type MessageType = "ai" | "human" | "system";
+type MessageType = "ai" | "human" | "system" | "tool";
 
 abstract class BaseMessage<TMsgType extends MessageType> {
-  content: string | null= "";
+  content: string | null = "";
   abstract readonly type: TMsgType;
+
+  constructor(content?: string) {
+    this.content = typeof content == "string" ? content : null;
+  }
 }
 
-class HumanMessage extends BaseMessage<"human">{
-  content: string = ""
+class HumanMessage extends BaseMessage<"human"> {
+  content: string;
   readonly type = "human" as const;
 
   constructor(content: string) {
@@ -34,7 +36,6 @@ class ToolCall {
 };
 
 class AIMessage extends BaseMessage<"ai"> {
-  content: string | null = null;
   toolCalls: Array<ToolCall> | null = null;
   readonly type = "ai" as const;
 
@@ -46,7 +47,7 @@ class AIMessage extends BaseMessage<"ai"> {
 }
 
 class SystemMessage extends BaseMessage<"system"> {
-  content: string = ""
+  content: string;
   readonly type = "system" as const;
 
   constructor(content: string) {
@@ -55,5 +56,17 @@ class SystemMessage extends BaseMessage<"system"> {
   }
 }
 
-export type AnyMessage = HumanMessage | AIMessage | SystemMessage;
-export { HumanMessage, AIMessage, SystemMessage, ToolCall };
+class ToolMessage extends BaseMessage<"tool"> {
+  readonly type = "tool" as const;
+  content: string;
+  toolCallId: string;
+
+  constructor(content: string, toolCallId: string) {
+    super();
+    this.content = content;
+    this.toolCallId = toolCallId;
+  }
+}
+
+export type AnyMessage = HumanMessage | AIMessage | SystemMessage | ToolMessage;
+export { HumanMessage, AIMessage, SystemMessage, ToolCall, ToolMessage };

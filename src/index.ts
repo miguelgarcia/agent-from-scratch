@@ -21,7 +21,10 @@ async function main() {
     schema: z.object({
       city: z.string().describe("city code")
     }),
-    callable: console.log
+    callable: ({ city }) => {
+      console.log(`Fake weather for ${city}`);
+      return { temperature: 15.5, humidity: 88.5 };
+    }
   })
   const agent = new Agent({ tools: [weatherTool] });
   for await (const line of rl) {

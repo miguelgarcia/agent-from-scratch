@@ -12,9 +12,24 @@ const formatMessage = (msg: AnyMessage): OpenAI.Chat.Completions.ChatCompletionM
     case "human":
       return { role: "user", content: msg.content };
     case "ai":
-      return { role: "assistant", content: msg.content };
+      return {
+        role: "assistant",
+        content: msg.content || "",
+        tool_calls: (msg.toolCalls && msg.toolCalls.length > 0)
+          ? (msg.toolCalls.map(tc => ({
+            id: tc.id,
+            type: "function",
+            function: {
+              arguments: JSON.stringify(tc.arguments),
+              name: tc.toolName
+            }
+          })))
+          : []
+      };
     case "system":
       return { role: "system", content: msg.content };
+    case "tool":
+      return { role: "tool", content: msg.content, tool_call_id: msg.toolCallId };
   }
 }
 
@@ -78,7 +93,6 @@ class ChatModel {
       parallel_tool_calls: true
     });
     const choice = response.choices[0];
-    console.log(JSON.stringify(choice, null, 2));
     if (!choice || (!choice.message?.content && !((choice.message.tool_calls || []).length > 0))) {
       throw new Error("No response from model");
     }
