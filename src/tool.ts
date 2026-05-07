@@ -1,9 +1,24 @@
 import { z } from "zod";
 
-export class Tool<TSchema extends z.ZodType> {
+export class ToolDefinition<TSchema extends z.ZodType> {
   name: string;
   description: string;
   schema: TSchema;
+
+  constructor(params: {
+    name: string;
+    description: string;
+    schema: TSchema;
+  }) {
+    this.name = params.name;
+    this.description = params.description;
+    this.schema = params.schema;
+  }
+}
+
+export type AnyToolDefinition = ToolDefinition<z.ZodType>;
+
+export class FunctionTool<TSchema extends z.ZodType> extends ToolDefinition<TSchema> {
   callable: (args: z.infer<TSchema>) => Promise<any> | any;
 
   constructor(params: {
@@ -12,9 +27,7 @@ export class Tool<TSchema extends z.ZodType> {
     schema: TSchema;
     callable: (args: z.infer<TSchema>) => Promise<any> | any;
   }) {
-    this.name = params.name;
-    this.description = params.description;
-    this.schema = params.schema;
+    super({ name: params.name, description: params.description, schema: params.schema });
     this.callable = params.callable;
   }
 
@@ -24,4 +37,5 @@ export class Tool<TSchema extends z.ZodType> {
   }
 }
 
-export type GenericTool = Tool<z.ZodType>;
+export type AnyFunctionTool = FunctionTool<z.ZodType>;
+export type AnyTool = AnyFunctionTool;

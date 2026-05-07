@@ -4,7 +4,7 @@
 import readline from 'readline';
 import { HumanMessage } from './messages';
 import { Agent } from './agent';
-import { Tool } from './tool';
+import { FunctionTool } from './tool';
 import * as z from "zod";
 const magenta = "\x1b[35m";
 const reset = "\x1b[0m";
@@ -15,7 +15,7 @@ const rl = readline.createInterface({
 });
 
 async function main() {
-  const weatherTool = new Tool({
+  const weatherTool = new FunctionTool({
     name: "getWeather",
     description: "Returns the current weather in the specified city",
     schema: z.object({
@@ -32,6 +32,9 @@ async function main() {
     }
     for await (const resp of agent.invoke(new HumanMessage(input))) {
       console.log(resp.content);
+      if (resp.type == "ai") {
+        console.log(resp.toolCalls);
+      }
     }
     rl.prompt();
   }

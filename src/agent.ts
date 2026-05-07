@@ -1,6 +1,6 @@
 import { HumanMessage, AIMessage, SystemMessage, AnyMessage } from "./messages";
 import { ChatModel } from "./llm-providers/openai"
-import { GenericTool } from "./tool";
+import { AnyTool } from "./tool";
 
 type AgentOutput = AnyMessage;
 
@@ -8,9 +8,9 @@ class Agent {
   messageHistory: Array<AnyMessage>
   chatModel: ChatModel
   prompt: Array<SystemMessage>
-  tools: Array<GenericTool>
+  tools: Array<AnyTool>
 
-  constructor(params: { tools: Array<GenericTool> }) {
+  constructor(params: { tools: Array<AnyTool> }) {
     this.messageHistory = [];
     this.tools = [...params.tools];
     this.chatModel = new ChatModel();

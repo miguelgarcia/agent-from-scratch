@@ -2,9 +2,10 @@
  * Mini wrapper for OpenAI
  */
 import OpenAI from 'openai';
-import { AIMessage, AnyMessage } from '../messages';
-import { GenericTool } from '../tool';
+import { AIMessage, AnyMessage, ToolCall } from '../messages';
+import { AnyToolDefinition } from '../tool';
 import { ChatCompletionFunctionTool } from 'openai/resources';
+import { ChatCompletionMessageToolCall } from 'openai/resources';
 
 const formatMessage = (msg: AnyMessage): OpenAI.Chat.Completions.ChatCompletionMessageParam => {
   switch (msg.type) {
@@ -19,7 +20,7 @@ const formatMessage = (msg: AnyMessage): OpenAI.Chat.Completions.ChatCompletionM
 
 const formatMessages = (messages: Array<AnyMessage>) => messages.map(formatMessage);
 
-const formatTool = (tool: GenericTool): ChatCompletionFunctionTool => {
+const formatTool = (tool: AnyToolDefinition): ChatCompletionFunctionTool => {
   return {
     type: "function",
     function: {
@@ -30,12 +31,30 @@ const formatTool = (tool: GenericTool): ChatCompletionFunctionTool => {
   }
 }
 
-const formatTools = (tools: Array<GenericTool>) => tools.map(formatTool);
+const formatTools = (tools: Array<AnyToolDefinition>) => tools.map(formatTool);
+
+const parseToolCall = (toolCall: ChatCompletionMessageToolCall) => {
+  if (toolCall.type != "function") {
+    throw new Error(`Unsupported tool call type ${toolCall.type}`);
+  }
+  return new ToolCall({
+    id: toolCall.id,
+    toolName: toolCall.function.name,
+    arguments: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : null
+  });
+}
+
+const parseToolCalls = (toolCalls: Array<ChatCompletionMessageToolCall> | undefined): Array<ToolCall> | undefined => {
+  if (!toolCalls) {
+    return;
+  }
+  return toolCalls.map(parseToolCall);
+}
 
 class ChatModel {
   client: OpenAI;
   model: string;
-  tools: Array<GenericTool>;
+  tools: Array<AnyToolDefinition>;
   #openAITools: Array<any>;
 
   constructor() {
@@ -45,7 +64,7 @@ class ChatModel {
     this.#openAITools = [];
   }
 
-  bindTools(tools: Array<GenericTool>) {
+  bindTools(tools: Array<AnyToolDefinition>) {
     this.tools = [...tools];
     this.#openAITools = formatTools(this.tools);
   }
@@ -60,11 +79,12 @@ class ChatModel {
     });
     const choice = response.choices[0];
     console.log(JSON.stringify(choice, null, 2));
-    if (!choice || !choice.message?.content) {
+    if (!choice || (!choice.message?.content && !((choice.message.tool_calls || []).length > 0))) {
       throw new Error("No response from model");
     }
-    const reply = choice.message?.content;
-    return new AIMessage(reply);
+    const content = choice.message?.content;
+    const toolCalls = parseToolCalls(choice.message?.tool_calls);
+    return new AIMessage({ content, toolCalls });
   }
 }
 
