@@ -1,7 +1,7 @@
 export class Interrupt {
-  content: string
+  content: string;
   #promise: Promise<string>;
-  #resolve
+  #resolve;
   readonly type = "interrupt" as const;
 
   constructor(content: string) {
