@@ -4,8 +4,7 @@
 import readline from 'readline';
 import { HumanMessage } from './messages';
 import { Agent } from './agent';
-import { FunctionTool } from './tool';
-import * as z from "zod";
+import { runShell } from './tools/shell';
 const magenta = "\x1b[35m";
 const reset = "\x1b[0m";
 
@@ -15,18 +14,7 @@ const rl = readline.createInterface({
 });
 
 async function main() {
-  const weatherTool = new FunctionTool({
-    name: "getWeather",
-    description: "Returns the current weather in the specified city",
-    schema: z.object({
-      city: z.string().describe("city code")
-    }),
-    callable: ({ city }) => {
-      console.log(`Fake weather for ${city}`);
-      return { temperature: 15.5, humidity: 88.5 };
-    }
-  })
-  const agent = new Agent({ tools: [weatherTool] });
+  const agent = new Agent({ tools: [runShell] });
   for await (const line of rl) {
     const input = line.trim();
     if (input === "/exit") {
@@ -35,6 +23,9 @@ async function main() {
     }
     for await (const resp of agent.invoke(new HumanMessage(input))) {
       // TODO: we should at least try to render markdown
+      if (resp.type == "tool") {
+        console.log(`Tool output: ${resp.toolCallId}:`)
+      }
       if (resp.content) {
         console.log(resp.content);
       }
