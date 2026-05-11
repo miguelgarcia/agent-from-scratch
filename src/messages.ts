@@ -36,7 +36,7 @@ class ToolCall {
 };
 
 class AIMessage extends BaseMessage<"ai"> {
-  toolCalls: Array<ToolCall> | null = null;
+  toolCalls: ToolCall[] | null = null;
   readonly type = "ai" as const;
 
   constructor(params: { content: string | null, toolCalls?: Array<ToolCall> | undefined }) {

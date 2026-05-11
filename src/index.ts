@@ -2,9 +2,10 @@
  * Main entry point. Takes care of terminal handling and delegates actual work on Agent.
  */
 import readline from 'readline';
-import { HumanMessage } from './messages';
+import { HumanMessage, SystemMessage } from './messages';
 import { Agent } from './agent';
 import { runShell } from './tools/shell';
+import { toolApproval } from './middleware/tool-approval';
 const magenta = "\x1b[35m";
 const reset = "\x1b[0m";
 
@@ -15,6 +16,16 @@ const rl = readline.createInterface({
 
 async function main() {
   const agent = new Agent({ tools: [runShell] });
+  agent.use("beforeModel", async function* (ctx, next) {
+    console.log("before model middleware", ctx.messages);
+    yield* next();
+  });
+  agent.use("beforeModel", async function* (ctx, next) {
+    ctx.prompt = [new SystemMessage("Your name is Rapaport"), ...ctx.prompt];
+    yield* next();
+  });
+  agent.use("beforeTools", toolApproval());
+
   for await (const line of rl) {
     const input = line.trim();
     if (input === "/exit") {

@@ -1,9 +1,22 @@
-import { HumanMessage, AIMessage, SystemMessage, AnyMessage, ToolMessage } from "./messages";
+import { HumanMessage, AIMessage, SystemMessage, AnyMessage, ToolMessage, ToolCall } from "./messages";
 import { ChatModel } from "./llm-providers/openai"
 import { AnyTool } from "./tool";
 import { Interrupt } from "./interrupt";
 
-type AgentOutput = AnyMessage | Interrupt;
+export type AgentOutput = AnyMessage | Interrupt;
+
+type AgentPhase = "beforeTools" | "beforeModel";
+
+export type AgentRunContext = {
+  prompt: SystemMessage[];
+  messages: AnyMessage[];
+  toolCalls: ToolCall[] | null;
+}
+
+export type Middleware = (
+  ctx: AgentRunContext,
+  next: () => AsyncGenerator<AgentOutput, void, void>,
+) => AsyncGenerator<AgentOutput, void, void>;
 
 class Agent {
   messageHistory: Array<AnyMessage>
@@ -11,6 +24,16 @@ class Agent {
   prompt: Array<SystemMessage>
   tools: Array<AnyTool>
   #toolsByName: Map<string, AnyTool>
+
+  private middlewares = new Map<AgentPhase, Middleware[]>();
+
+  use(phase: AgentPhase, middleware: Middleware) {
+    const arr = this.middlewares.get(phase) ?? [];
+
+    arr.push(middleware);
+
+    this.middlewares.set(phase, arr);
+  }
 
   constructor(params: { tools: Array<AnyTool> }) {
     this.messageHistory = [];
@@ -27,10 +50,16 @@ class Agent {
    * @param msg
    */
   async* invoke(msg: HumanMessage): AsyncGenerator<AgentOutput, any, any> {
+    const ctx: AgentRunContext = {
+      prompt: [new SystemMessage("You are an expert in software development.")],
+      messages: this.messageHistory,
+      toolCalls: null
+    };
     this.messageHistory.push(msg);
     let recursionLimit = 25;
     while (recursionLimit-- > 0) {
-      const modelInput = [...this.prompt, ...this.messageHistory];
+      yield* this.runPhase("beforeModel", ctx);
+      const modelInput = [...ctx.prompt, ...ctx.messages];
       const response: AIMessage = await this.chatModel.invoke(modelInput);
       this.messageHistory.push(response);
       yield response;
@@ -40,23 +69,16 @@ class Agent {
         break;
       }
       // For now we do sequential tool calling
-      for (const toolCall of response.toolCalls) {
-        const args = toolCall.arguments;
+      ctx.toolCalls = response.toolCalls;
+      yield* this.runPhase("beforeTools", ctx);
+      for (const toolCall of ctx.toolCalls ?? []) {
         const tool = this.#toolsByName.get(toolCall.toolName);
         if (!tool) {
           throw new Error(`Tool not found ${toolCall.toolName}`);
         }
         try {
-          const interrupt = new Interrupt(`Allow tool ${tool.name} with args: ${JSON.stringify(args)}`);
-          yield interrupt;
-          const answer = await interrupt.await();
-          let toolMsg: ToolMessage;
-          if (answer == "y") {
-            const toolResult = await tool.invoke(args);
-            toolMsg = new ToolMessage(JSON.stringify(toolResult), toolCall.id);
-          } else {
-            toolMsg = new ToolMessage("blocked by user", toolCall.id);
-          }
+          const toolResult = await tool.invoke(toolCall.arguments);
+          const toolMsg = new ToolMessage(JSON.stringify(toolResult), toolCall.id);
           yield toolMsg;
           this.messageHistory.push(toolMsg);
         } catch (e) {
@@ -66,8 +88,19 @@ class Agent {
     }
   }
 
-  async awaitInterrupt(interruptId: string) {
+  private async *runPhase(
+    phase: AgentPhase,
+    ctx: AgentRunContext,
+  ): AsyncGenerator<AgentOutput, void, void> {
+    const middlewares = this.middlewares.get(phase) ?? [];
 
+    const dispatch = async function* (index: number): AsyncGenerator<AgentOutput, void, void> {
+      const mw = middlewares[index];
+      if (!mw) return;
+      yield* mw(ctx, () => dispatch(index + 1));
+    };
+
+    yield* dispatch(0);
   }
 }
 
