@@ -19,7 +19,11 @@ class Agent {
     this.tools.forEach(t => this.#toolsByName.set(t.name, t));
     this.chatModel = new ChatModel();
     this.chatModel.bindTools(this.tools);
-    this.prompt = [new SystemMessage("You are an expert in software development.")];
+    this.prompt = [new SystemMessage(
+      "You are a software engineering assistant. Help users with coding tasks: writing, debugging, refactoring, and understanding code.\n" +
+      "You have one tool: a shell. Use it to explore the codebase, run tests, edit files, and execute commands.\n" +
+      "Be direct and efficient. Prefer small, targeted commands. Always verify your changes work."
+    )];
   }
 
   /**
