@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { HumanMessage, AIMessage, SystemMessage, AnyMessage, ToolMessage } from "./messages";
 import { ChatModel } from "./llm-providers/openai"
 import { AnyTool } from "./tool";
@@ -19,12 +20,7 @@ class Agent {
     this.tools.forEach(t => this.#toolsByName.set(t.name, t));
     this.chatModel = new ChatModel();
     this.chatModel.bindTools(this.tools);
-    this.prompt = [new SystemMessage(
-      "You are a software engineering assistant. Help users with coding tasks: writing, debugging, refactoring, and understanding code.\n" +
-      "You have one tool: a shell. Use it to explore the codebase, run tests, edit files, and execute commands.\n" +
-      "Be direct and efficient. Prefer small, targeted commands. Always verify your changes work.\n" +
-      "You are running on macOS (BSD sed). Always use `sed -i ''` (with empty string) for in-place edits. For complex multi-line substitutions, prefer perl: `perl -i -pe 's/foo/bar/g' file`."
-    )];
+    this.prompt = [new SystemMessage(readFileSync('./prompt.md', 'utf8'))];
   }
 
   /**
@@ -41,10 +37,8 @@ class Agent {
       yield response;
 
       if (!response.toolCalls || response.toolCalls.length == 0) {
-        // Nothing else to do
         break;
       }
-      // For now we do sequential tool calling
       for (const toolCall of response.toolCalls) {
         const args = toolCall.arguments;
         const tool = this.#toolsByName.get(toolCall.toolName);
@@ -65,7 +59,9 @@ class Agent {
           yield toolMsg;
           this.messageHistory.push(toolMsg);
         } catch (e) {
-          throw new Error(`Error calling tool ${tool.name} ${e}`);
+          const toolMsg = new ToolMessage(`Error: ${e instanceof Error ? e.message : String(e)}`, toolCall.id);
+          yield toolMsg;
+          this.messageHistory.push(toolMsg);
         }
       }
     }

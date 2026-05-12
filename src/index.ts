@@ -5,6 +5,9 @@ import readline from 'readline';
 import { HumanMessage } from './messages';
 import { Agent } from './agent';
 import { runShell } from './tools/shell';
+import { readFile } from './tools/readFile';
+import { grep } from './tools/grep';
+import { applyDiffs } from './tools/applyDiffs';
 const magenta = "\x1b[35m";
 const reset = "\x1b[0m";
 
@@ -14,7 +17,7 @@ const rl = readline.createInterface({
 });
 
 async function main() {
-  const agent = new Agent({ tools: [runShell] });
+  const agent = new Agent({ tools: [runShell, readFile, grep, applyDiffs] });
   for await (const line of rl) {
     const input = line.trim();
     if (input === "/exit") {
