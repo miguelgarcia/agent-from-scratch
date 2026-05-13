@@ -75,7 +75,7 @@ class ChatModel {
 
   constructor() {
     this.client = new OpenAI();
-    this.model = "gpt-4o-mini";
+    this.model = "gpt-5.4-mini";
     this.tools = [];
     this.#openAITools = [];
   }
