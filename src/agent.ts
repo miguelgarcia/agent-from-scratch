@@ -20,7 +20,7 @@ class Agent {
     this.tools.forEach(t => this.#toolsByName.set(t.name, t));
     this.chatModel = new ChatModel();
     this.chatModel.bindTools(this.tools);
-    this.prompt = [new SystemMessage(readFileSync('./prompt.md', 'utf8'))];
+    this.prompt = [new SystemMessage(readFileSync('./PROMPT.md', 'utf8'))];
   }
 
   /**
