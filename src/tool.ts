@@ -4,15 +4,18 @@ export class ToolDefinition<TSchema extends z.ZodType> {
   name: string;
   description: string;
   schema: TSchema;
+  requiresApproval: boolean;
 
   constructor(params: {
     name: string;
     description: string;
     schema: TSchema;
+    requiresApproval?: boolean;
   }) {
     this.name = params.name;
     this.description = params.description;
     this.schema = params.schema;
+    this.requiresApproval = params.requiresApproval ?? true;
   }
 }
 
@@ -25,9 +28,15 @@ export class FunctionTool<TSchema extends z.ZodType> extends ToolDefinition<TSch
     name: string;
     description: string;
     schema: TSchema;
+    requiresApproval?: boolean;
     callable: (args: z.infer<TSchema>) => Promise<any> | any;
   }) {
-    super({ name: params.name, description: params.description, schema: params.schema });
+    super({
+      name: params.name,
+      description: params.description,
+      schema: params.schema,
+      requiresApproval: params.requiresApproval ?? true,
+    });
     this.callable = params.callable;
   }
 
