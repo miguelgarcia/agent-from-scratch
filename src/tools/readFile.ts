@@ -5,6 +5,7 @@ import * as fs from "fs";
 export const readFile = new FunctionTool({
   name: "readFile",
   description: "Read a file's contents, optionally limited to a line range. Returns content with line numbers.",
+  requiresApproval: false,
   schema: z.object({
     path: z.string().describe("path to the file"),
     startLine: z.number().optional().describe("1-based start line (inclusive)"),

@@ -46,15 +46,20 @@ class Agent {
           throw new Error(`Tool not found ${toolCall.toolName}`);
         }
         try {
-          const interrupt = new Interrupt(`Allow tool ${tool.name} with args: ${JSON.stringify(args)}`);
-          yield interrupt;
-          const answer = await interrupt.await();
           let toolMsg: ToolMessage;
-          if (answer == "y") {
+          if (tool.requiresApproval) {
+            const interrupt = new Interrupt(`Allow tool ${tool.name} with args: ${JSON.stringify(args)}`);
+            yield interrupt;
+            const answer = await interrupt.await();
+            if (answer == "y") {
+              const toolResult = await tool.invoke(args);
+              toolMsg = new ToolMessage(JSON.stringify(toolResult), toolCall.id);
+            } else {
+              toolMsg = new ToolMessage("blocked by user", toolCall.id);
+            }
+          } else {
             const toolResult = await tool.invoke(args);
             toolMsg = new ToolMessage(JSON.stringify(toolResult), toolCall.id);
-          } else {
-            toolMsg = new ToolMessage("blocked by user", toolCall.id);
           }
           yield toolMsg;
           this.messageHistory.push(toolMsg);

@@ -28,6 +28,7 @@ function runGrep(pattern: string, path: string, recursive: boolean): Promise<Mat
 export const grep = new FunctionTool({
   name: "grep",
   description: "Search for a regex pattern in a file or directory. Returns matching lines with file and line number.",
+  requiresApproval: false,
   schema: z.object({
     pattern: z.string().describe("regex pattern to search for"),
     path: z.string().describe("file or directory to search"),
